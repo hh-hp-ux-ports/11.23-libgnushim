@@ -26,11 +26,13 @@ for ABI in 32 64 ; do
   # exactly which, alias those to plain names (aliases.c), and add our own getopt_long (gnulib's
   # is rpl_-namespaced WITH its own rpl_optarg globals — aliasing it would desync libc optarg).
   say "ABI $ABI alias detection + augmentation"
+  # GNU nm EXPLICITLY (PATH nm was ambiguous: GNU "addr T name" vs HP pipe-format — bit us)
+  NM=/opt/binutils/bin/nm
   DEFS=""
   for s in $SYMS ; do
-    if nm gllib/libgnu.a 2>/dev/null | awk "/\|${s}\$/ && /FUNC/ && /GLOB/ && !/UNDEF/" | grep . >/dev/null ; then
+    if $NM --defined-only gllib/libgnu.a 2>/dev/null | grep -E " [TtWw] ${s}$" >/dev/null ; then
       : # plain symbol present
-    elif nm gllib/libgnu.a 2>/dev/null | awk "/\|rpl_${s}\$/ && /FUNC/ && /GLOB/ && !/UNDEF/" | grep . >/dev/null ; then
+    elif $NM --defined-only gllib/libgnu.a 2>/dev/null | grep -E " [TtWw] rpl_${s}$" >/dev/null ; then
       U=`echo $s | tr "[:lower:]" "[:upper:]"`
       DEFS="$DEFS -DNEED_ALIAS_$U"
     fi
@@ -42,9 +44,9 @@ for ABI in 32 64 ; do
   say "ABI $ABI symbol verification (post-augment)"
   MISSING=""
   for s in $SYMS ; do
-    nm gllib/libgnu.a 2>/dev/null | awk "/\|${s}\$/ && /FUNC/ && /GLOB/ && !/UNDEF/" | grep . >/dev/null || MISSING="$MISSING $s"
+    $NM --defined-only gllib/libgnu.a 2>/dev/null | grep -E " [TtWw] ${s}$" >/dev/null || MISSING="$MISSING $s"
   done
-  [ -z "$MISSING" ] || { nm gllib/libgnu.a | grep -iE "getopt|getline|canonical" | head -10 ; fail "abi$ABI missing symbols:$MISSING" ; }
+  [ -z "$MISSING" ] || { $NM --defined-only gllib/libgnu.a | grep -iE "getopt|getline|canonical" | head -10 ; fail "abi$ABI missing symbols:$MISSING" ; }
   say "ABI $ABI gnulib self-tests (full run)"
   gmake check > chk.log 2>&1
   say "ABI $ABI check exit=$?"
