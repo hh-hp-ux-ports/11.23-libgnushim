@@ -22,12 +22,29 @@ for ABI in 32 64 ; do
   $REPO/testdir/configure CC="gcc $MF" CFLAGS="-O2" > cfg.log 2>&1 || { tail -20 cfg.log ; fail "configure abi$ABI" ; }
   gmake > mk.log 2>&1 || { tail -30 mk.log ; fail "build abi$ABI" ; }
   [ -f gllib/libgnu.a ] || fail "no libgnu.a abi$ABI"
-  say "ABI $ABI symbol verification"
+  # gnulib exports SOME functions under its rpl_ prefix (mixed, per-function, per-ABI). Detect
+  # exactly which, alias those to plain names (aliases.c), and add our own getopt_long (gnulib's
+  # is rpl_-namespaced WITH its own rpl_optarg globals — aliasing it would desync libc optarg).
+  say "ABI $ABI alias detection + augmentation"
+  DEFS=""
+  for s in $SYMS ; do
+    if nm gllib/libgnu.a 2>/dev/null | awk "/\|${s}\$/ && /FUNC/ && /GLOB/ && !/UNDEF/" | grep . >/dev/null ; then
+      : # plain symbol present
+    elif nm gllib/libgnu.a 2>/dev/null | awk "/\|rpl_${s}\$/ && /FUNC/ && /GLOB/ && !/UNDEF/" | grep . >/dev/null ; then
+      U=`echo $s | tr "[:lower:]" "[:upper:]"`
+      DEFS="$DEFS -DNEED_ALIAS_$U"
+    fi
+  done
+  say "ABI $ABI aliases needed:$DEFS"
+  gcc $MF -O2 $DEFS -c /mnt/debianshare/libgnushim/aliases.c -o aliases.o || fail "aliases abi$ABI"
+  gcc $MF -O2 -I/mnt/debianshare/libgnushim -c /mnt/debianshare/libgnushim/getopt_long.c -o getopt_long.o || fail "getopt_long abi$ABI"
+  ar r gllib/libgnu.a aliases.o getopt_long.o || fail "ar augment abi$ABI"
+  say "ABI $ABI symbol verification (post-augment)"
   MISSING=""
   for s in $SYMS ; do
-    nm gllib/libgnu.a 2>/dev/null | grep -E "T \\.?${s}\$|T ${s}\$" >/dev/null || MISSING="$MISSING $s"
+    nm gllib/libgnu.a 2>/dev/null | awk "/\|${s}\$/ && /FUNC/ && /GLOB/ && !/UNDEF/" | grep . >/dev/null || MISSING="$MISSING $s"
   done
-  [ -z "$MISSING" ] || { nm gllib/libgnu.a | grep -iE "getopt|canonical" | head -8 ; fail "abi$ABI missing symbols:$MISSING" ; }
+  [ -z "$MISSING" ] || { nm gllib/libgnu.a | grep -iE "getopt|getline|canonical" | head -10 ; fail "abi$ABI missing symbols:$MISSING" ; }
   say "ABI $ABI gnulib self-tests (full run)"
   gmake check > chk.log 2>&1
   say "ABI $ABI check exit=$?"
