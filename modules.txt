@@ -1,0 +1,17 @@
+setenv
+unsetenv
+getline
+getdelim
+strnlen
+strcasestr
+mkstemps
+futimens
+canonicalize-lgpl
+getopt-gnu
+strndup
+stpcpy
+stpncpy
+vasprintf
+asprintf
+strverscmp
+mempcpy
