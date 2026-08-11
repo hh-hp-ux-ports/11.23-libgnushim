@@ -1,0 +1,34 @@
+libgnushim — copyright and licensing
+====================================
+
+libgnushim is licensed **GPL-3.0-or-later**. The full text is in `LICENSE` (verbatim GPLv3, not
+transcribed).
+
+Why a separate note, when there is already a LICENSE
+----------------------------------------------------
+This library is not wholly original work, and saying only "GPLv3+" would obscure where the code
+came from. Three different provenances live in this repository:
+
+1. **`testdir/` — generated GNU gnulib source.**
+   Produced by `regenerate.sh` from a pinned gnulib checkout (37b6f12946, 2020-08-01) and committed
+   so the build is reproducible without network access. These files are **gnulib's, under gnulib's
+   own terms**, and each carries its own header — read the file, not this note. gnulib modules are
+   variously GPL-3.0-or-later and LGPL-2.1-or-later; the combined static library as distributed
+   here is therefore GPL-3.0-or-later, which is compatible with both.
+
+2. **`aliases.c`, `getopt_long.c`, `gnushim.h`, `probe/`, and the build scripts — original work**
+   for this port, copyright Hugo Hurskainen, GPL-3.0-or-later.
+   `getopt_long.c` exists precisely because gnulib's getopt carries global state that the alias
+   layer cannot passthrough; it is an independent implementation, not a gnulib copy.
+
+3. **`modules.txt`** — a list of gnulib module names. A list of names, not code.
+
+What this means for a consumer
+------------------------------
+Linking `-lgnushim` into a program links gnulib-derived code, so the resulting binary inherits
+those obligations. That is the normal situation for anything that uses gnulib, and it is the reason
+the shim exists as a separate, clearly-labelled library rather than being copied ad hoc into each
+port: one place to look, one licence to reason about.
+
+Documentation in this repository is GPL-3.0-or-later. Hugo's to relicense if he would rather it
+were permissive.
